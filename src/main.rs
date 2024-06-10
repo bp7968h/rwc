@@ -1,4 +1,5 @@
 use std::env;
+use std::fs;
 
 fn main(){
     let args: Vec<String> = env::args().collect();
@@ -11,7 +12,8 @@ fn main(){
         println!("Error Format");
     }else{
         let config: Config = Config::build(&args);
-        println!("This is config: {:#?}", config)
+        println!("This is config: {:#?}", config);
+        display(config);
     }
 }
 
@@ -34,5 +36,14 @@ impl Config{
         }
 
         Config {filename, flags}
+    }
+}
+
+fn display(config: Config){
+    for flag in config.flags{
+        if flag == "-c"{
+            let size = fs::metadata(config.filename.clone()).unwrap().len();
+            println!("Size is {:?}", size);
+        }
     }
 }
