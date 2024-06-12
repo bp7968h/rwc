@@ -4,7 +4,7 @@ use std::fs;
 fn main(){
     let args: Vec<String> = env::args().collect();
 
-    println!("Args is {:#?}", args);
+    println!("Args is {:#?}", &args);
 
     if args.len() == 1 {
         println!("No arguments supplied");
@@ -18,24 +18,24 @@ fn main(){
 }
 
 #[derive(Debug)]
-struct Config{
-    filename: String,
-    flags: Vec<String>,
+struct Config<'a>{
+    filename: &'a String,
+    flags: Vec<&'a String>,
 }
 
-impl Config{
-    fn build(args: &[String]) -> Config{
-        let mut flags: Vec<String> = Vec::new();
-        let mut filename = String::new();
+impl<'a> Config<'a>{
+    fn build(&mut self,args: &'a [String]) -> Self{
+        // let mut flags: Vec<String> = Vec::new();
+        // let mut filename = String::new();
         for arg in args{
             if arg.starts_with("-"){
-                flags.push(arg.clone());
+                self.flags.push(&arg);
             }else{
-                filename = arg.clone();
+                self.filename = &arg;
             }
         }
 
-        Config {filename, flags}
+        self
     }
 }
 
