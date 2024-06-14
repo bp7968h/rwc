@@ -16,12 +16,19 @@ fn main(){
         process::exit(1);
     }
 
-    let fileContent: String = read_file(&config.file_name).unwrap_or_else(|err| {
+    let file_content: String = read_file(&config.file_name).unwrap_or_else(|err| {
         eprintln!("File Operation Error: {err}");
         process::exit(1);
     });
 
-    get_results(fileContent, &config.flags);
+    let result: String = get_results(file_content, &config.flags);
+
+    if result.is_empty(){
+        eprintln!("Wrong flags!!");
+        process::exit(1);
+    }
+    println!("{} {}", result, config.file_name);
+    process::exit(0);
 }
 
 fn read_file(file: &String) -> Result<String, Error>{
@@ -58,20 +65,23 @@ fn parse_arguments(args: &[String]) -> FlagsFile {
 }
 
 
-struct FlagResults {
-    result: String
-}
-
-fn get_results(content: String, flags: &[String]) {
+fn get_results(content: String, flags: &[String]) -> String {
+    let mut result: String = String::new();
+    if flags.is_empty(){
+        result.push_str(&format!("{} {} {}", content.lines().count(), content.split_whitespace().count(), content.len()));
+        return result
+    }
     for flag in flags {
-        if flag == "-c" {
-            println!("Byte: {:?}", content.len());
-        }else if flag == "-l" {
-            println!("Line:");
-        }else if flag == "-w" {
-            println!("Words:");
-        }else if flag == "m" {
-            println!("Characters:");
+        match flag.as_str() {
+            "-c" => result.push_str(&format!(" {:?}", content.len())),
+            "-l" => result.push_str(&format!(" {:?}", content.lines().count())),
+            "-w" => result.push_str(&format!(" {:?}", content.split_whitespace().count())),
+            "-m" => result.push_str(&format!(" {:?}", content.chars().count())),
+            _ => ()
         }
     }
+
+    // println!("{}", result);
+    result
 }
+
