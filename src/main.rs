@@ -1,67 +1,88 @@
 use std::env;
 use std::fs;
 use std::process;
-use std::io::{Error};
+use std::io;
+use std::io::{Error, Read};
 
 fn main(){
-    let args = get_arguments().unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {err}");
-        process::exit(1);
-    });
 
-    let config : FlagsFile = parse_arguments(&args[1..]);
+    let config = match Options::build() {
+        Ok(cfg) => cfg,
+        Err(err) => {
+            eprintln!("Problem parsing arguments: {err}");
+            process::exit(1);
+        }
+    };
 
-    if config.file_name.is_empty() {
-        eprintln!("No file specified");
-        process::exit(1);
+    let content = if !config.file_name.is_empty() {
+        read_file(&config.file_name).unwrap_or_else(|err| {
+            eprintln!("File Operation Error: {err}");
+            process::exit(1);
+        })
+    } else {
+        read_stdin().unwrap_or_else(|err| {
+            eprintln!("Std Io Error: {err}");
+            process::exit(1);
+        })
+    };
+
+    let result: String = get_results(content, &config.flags);
+
+    match output(&result, &config.file_name){
+        Ok(_) => process::exit(0),
+        Err(e) => {
+            eprintln!("Error: {:?}", e);
+            process::exit(1);
+        }
+    }
+}
+
+fn read_stdin() -> Result<String, Error> {
+    let mut std_content = String::new();
+    let bytes_read = io::stdin().read_to_string(&mut std_content)?;
+    
+    if bytes_read == 0 {
+        return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "No data received via stdin"));
     }
 
-    let file_content: String = read_file(&config.file_name).unwrap_or_else(|err| {
-        eprintln!("File Operation Error: {err}");
-        process::exit(1);
-    });
-
-    let result: String = get_results(file_content, &config.flags);
-
-    if result.is_empty(){
-        eprintln!("Wrong flags!!");
-        process::exit(1);
-    }
-    println!("{} {}", result, config.file_name);
-    process::exit(0);
+    Ok(std_content)
 }
 
 fn read_file(file: &String) -> Result<String, Error>{
     fs::read_to_string(file)
 }
 
-fn get_arguments() -> Result<Vec<String>, &'static str>{
-    let args: Vec<String> = env::args().collect();
-    if args.len() <= 1 {
-        return Err("Not enough Parameters")
+fn output(result: &String, file_name: &String) -> Result<(), &'static str> {
+    if result.is_empty(){
+        return Err("Wrong flags!!");
     }
-    Ok(args)
+    println!("{} {}", result, file_name);
+    Ok(())
 }
 
 #[derive(Debug)]
-struct FlagsFile {
+struct Options {
     file_name: String,
     flags: Vec<String>,
 }
 
-fn parse_arguments(args: &[String]) -> FlagsFile {
-    let mut file_name: String = String::new();
-    let mut flags: Vec<String> = Vec::new();
+impl Options {
+    fn build() -> Result<Options, &'static str> {
+        let args: Vec<String> = env::args().collect();
 
-    for arg in args{
-        if arg.starts_with("-") {
-            flags.push(arg.clone());
-        }else {
-            file_name = arg.clone();
+        let mut file_name: String = String::new();
+        let mut flags: Vec<String> = Vec::new();
+
+        for arg in args[1..].iter(){
+            if arg.starts_with("-") {
+                flags.push(arg.clone());
+            }else {
+                file_name = arg.clone();
+            }
         }
-    }
 
-    FlagsFile {file_name, flags}
+        Ok(Options {file_name, flags})
+    }
 }
 
 
@@ -80,8 +101,6 @@ fn get_results(content: String, flags: &[String]) -> String {
             _ => ()
         }
     }
-
-    // println!("{}", result);
     result
 }
 
